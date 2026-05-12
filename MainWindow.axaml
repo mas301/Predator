@@ -1,0 +1,172 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:local="using:Predator"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="Predator.MainWindow"
+        Title="Predator">
+
+    <Window.Resources>
+        <Thickness x:Key="TabControlTopPlacementItemMargin">0</Thickness>
+        <SolidColorBrush x:Key="DataGridColumnHeaderHoveredBackgroundBrush" Color="WhiteSmoke" />
+    </Window.Resources>
+
+    <Window.Styles>
+        <Style Selector="TabControl :is(TabItem)">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Padding" Value="2,1,2,1" />
+            <Setter Property="Margin" Value="4,0,0,0" />
+            <Setter Property="MinHeight" Value="28" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="FontWeight" Value="Normal" />
+            <Setter Property="Foreground" Value="#4A4A4A" />
+            <Setter Property="BorderThickness" Value="0.5" />
+            <Setter Property="BorderBrush" Value="Gainsboro" />
+            <Setter Property="CornerRadius" Value="5,5,0,0" />
+            <Setter Property="Background" Value="WhiteSmoke" />
+        </Style>
+
+        <Style Selector="TabControl :is(TabItem):selected">
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Background" Value="Gainsboro" />
+            <Setter Property="BorderThickness" Value="0.5,0.5,0.5,0" />
+        </Style>
+
+        <Style Selector="TabControl :is(TabItem):selected /template/ Border#PART_SelectedPipe">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+
+        <Style Selector="TabControl :is(TabItem) /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+
+        <Style Selector="TabControl /template/ ContentPresenter#PART_SelectedContentHost">
+            <Setter Property="Margin" Value="0" />
+        </Style>
+
+        <Style Selector="Menu">
+            <Setter Property="Background" Value="#003366" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <Style Selector="MenuItem">
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter Content="{TemplateBinding Header}"
+                                          Foreground="White"
+                                          ContentTemplate="{TemplateBinding HeaderTemplate}"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <Style Selector="MenuItem:pointerover">
+            <Setter Property="Background" Value="#004d80" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <Style Selector="MenuItem:open">
+            <Setter Property="Background" Value="#004d80" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <Style Selector="MenuItem:selected">
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <Style Selector="MenuItem:disabled">
+            <Setter Property="Opacity" Value="0.5" />
+        </Style>
+
+        <Style Selector="DataGridColumnHeader">
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="FontSize" Value="{Binding $parent[DataGrid].FontSize}" />
+            <Setter Property="Background" Value="WhiteSmoke" />
+        </Style>
+
+        <Style Selector="DataGridColumnHeader:pointerover">
+            <Setter Property="Background" Value="WhiteSmoke" />
+        </Style>
+
+        <Style Selector="DataGridColumnHeader:pointerover /template/ Grid#PART_ColumnHeaderRoot">
+            <Setter Property="Background" Value="WhiteSmoke" />
+        </Style>
+
+        <Style Selector="DataGridColumnHeader /template/ Border">
+            <Setter Property="Background" Value="WhiteSmoke" />
+        </Style>
+
+        <Style Selector="DataGridColumnHeader:pointerover /template/ Border">
+            <Setter Property="Background" Value="WhiteSmoke" />
+        </Style>
+
+        <Style Selector="DataGridCell:focus">
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+
+        <Style Selector="DataGridCell">
+            <Setter Property="Foreground" Value="#4A4A4A" />
+        </Style>
+
+        <Style Selector="DataGridCell:current">
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+
+        <Style Selector="Button.tab-close-button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="#4A4A4A" />
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}">
+                        <ContentPresenter HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                          Content="{TemplateBinding Content}"
+                                          Foreground="{TemplateBinding Foreground}" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <Style Selector="Button.tab-close-button:disabled">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Foreground" Value="#E0E0E0" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+
+        <Style Selector="TabControl :is(TabItem)">
+            <Setter Property="HeaderTemplate">
+                <DataTemplate x:DataType="local:WorkspaceTabHeader">
+                    <StackPanel Orientation="Horizontal" Spacing="6" Margin="4,0,0,0">
+                        <TextBlock Text="{Binding Title}" VerticalAlignment="Center" FontSize="14" Foreground="#4A4A4A" />
+                        <Button Name="CloseButton" Classes="tab-close-button" Width="16" Height="16" Padding="0"
+                                HorizontalContentAlignment="Center"
+                                FontSize="12" Content="✕" IsEnabled="{Binding IsCloseButtonEnabled}"
+                                Click="OnTabCloseButtonClick" />
+                    </StackPanel>
+                </DataTemplate>
+            </Setter>
+        </Style>
+    </Window.Styles>
+
+    <DockPanel>
+        <Menu x:Name="MainMenu" DockPanel.Dock="Top" />
+
+        <TabControl x:Name="WorkspaceTabs" Margin="0,2,0,0" Padding="2,0,2,2" />
+    </DockPanel>
+</Window>
