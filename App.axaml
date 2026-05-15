@@ -7,6 +7,43 @@
     <Application.Styles>
         <FluentTheme />
         <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
-       
+
+        <Style Selector="DataGridColumnHeader">
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="FontSize" Value="{Binding $parent[DataGrid].FontSize}" />
+            <Setter Property="Background" Value="WhiteSmoke" />
+        </Style>
+
+        <Style Selector="DataGridColumnHeader:pointerover">
+            <Setter Property="Background" Value="WhiteSmoke" />
+        </Style>
+
+        <Style Selector="DataGridColumnHeader:pointerover /template/ Grid#PART_ColumnHeaderRoot">
+            <Setter Property="Background" Value="WhiteSmoke" />
+        </Style>
+
+        <Style Selector="DataGridColumnHeader /template/ Border">
+            <Setter Property="Background" Value="WhiteSmoke" />
+        </Style>
+
+        <Style Selector="DataGridColumnHeader:pointerover /template/ Border">
+            <Setter Property="Background" Value="WhiteSmoke" />
+        </Style>
+
+        <Style Selector="DataGridCell:focus">
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+
+        <Style Selector="DataGridCell">
+            <Setter Property="Foreground" Value="#4A4A4A" />
+            <Setter Property="Focusable" Value="False" />
+        </Style>
+
+        <Style Selector="DataGridCell:current">
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+
     </Application.Styles>
 </Application>

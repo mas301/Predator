@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Layout;
-using Avalonia.Media;
+using CoreIA;
+using System.Data;
 using System;
 
 namespace Predator;
@@ -8,6 +9,8 @@ namespace Predator;
 public class LoginPage : UserControl
 {
     private const double InputWidth = 220;
+
+    public Sesion? SesionActual { get; set; }
 
     public event EventHandler? LoginContinued;
     public event EventHandler? LogoutRequested;
@@ -40,17 +43,7 @@ public class LoginPage : UserControl
             Margin = new Avalonia.Thickness(0)
         };
 
-        // Título Login
-        var titleTextBlock = new TextBlock
-        {
-            Text = "Login",
-            FontSize = 24,
-            FontWeight = Avalonia.Media.FontWeight.Bold,
-            HorizontalAlignment = HorizontalAlignment.Center
-        };
-        mainStackPanel.Children.Add(titleTextBlock);
-
-        // Código de Empresa
+              // Código de Empresa
         var empresaStackPanel = new StackPanel { Spacing = 4 };
         empresaStackPanel.Children.Add(new TextBlock
         {
@@ -60,6 +53,7 @@ public class LoginPage : UserControl
         _empresaTextBox = new TextBox
         {
             PlaceholderText = "Ingrese el código de empresa",
+            Text = "20604217327",
             Width = InputWidth
         };
         empresaStackPanel.Children.Add(_empresaTextBox);
@@ -90,6 +84,7 @@ public class LoginPage : UserControl
         _usuarioTextBox = new TextBox
         {
             PlaceholderText = "Ingrese la cuenta de usuario",
+            Text = "Desarrollador",
             Width = InputWidth
         };
         usuarioStackPanel.Children.Add(_usuarioTextBox);
@@ -106,6 +101,7 @@ public class LoginPage : UserControl
         {
             PasswordChar = '*',
             PlaceholderText = "Ingrese la contraseña",
+            Text = "ghs2020",
             Width = InputWidth
         };
         _contrasenaPanel.Children.Add(_contrasenaTextBox);
@@ -179,20 +175,96 @@ public class LoginPage : UserControl
         Content = border;
     }
 
-    private void OnContinueButtonClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    private async void OnContinueButtonClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        if (!_isPostLoginState)
+        if (_isPostLoginState)
+            return;
+
+        if (SesionActual is null)
         {
+            MessageWindow.ShowMessage("La sesión no está inicializada.");
+            return;
+        }
+
+        var codigoEmpresa = _empresaTextBox.Text?.Trim();
+        if (string.IsNullOrWhiteSpace(codigoEmpresa))
+        {
+            MessageWindow.ShowMessage("Ingrese el código de empresa.");
+            return;
+        }
+
+        var cadenaConexion = SesionActual.ConexionDominio;
+        if (string.IsNullOrWhiteSpace(cadenaConexion))
+        {
+            MessageWindow.ShowMessage("La conexión de sesión no está configurada.");
+            return;
+        }
+
+        DataSet dts;
+        try
+        {
+            dts = await Logeo.LeeTokenAsync(codigoEmpresa, cadenaConexion);
+
+        }
+        catch (Exception ex)
+        {
+            MessageWindow.ShowMessage("Ha ocurrido un error al intentar acceder al servidor: " + ex.Message);
+            return;
+        }
+        System.Data.DataRow? dtr = null;
+        if (dts.Tables.Count > 0 && dts.Tables[0].Rows.Count > 0)
+        {
+            dtr = dts.Tables[0].Rows[0];
+        }
+        else
+        {
+            MessageWindow.ShowMessage("La Empresa no existe.");
+            return;
+        }
+
+        string ConexionInicial = "Data Source=***;Initial Catalog=###;User Id=sa###;Password=Mauricio2004;TrustServerCertificate=True;Encrypt=True;";
+        SesionActual.ConexionCrud = ConexionInicial.Replace("***", Globales.Texto(dtr["Servidor"])).Replace("###", Globales.Texto(dtr["BaseDatos"]));
+
+        var LOM = new CoreIA.Clases.LoginyMensaje();
+        SesionActual.Credenciales = new Credenciales
+        {
+            CodigoEmpresa = _empresaTextBox.Text ?? string.Empty,
+            Usuario = _usuarioTextBox.Text ?? string.Empty,
+            Contrasenia = _contrasenaTextBox.Text ?? string.Empty,
+        };
+        var res = await Logeo.LogeoAsync(SesionActual, LOM);
+        if (res)
+        {
+            var login = LOM.Login;
+            if (login is null)
+                return;
+
+            SesionActual.Credenciales.EmpresaId = Globales.EnteroNull(login["EmpresaId"]);
+            SesionActual.Credenciales.Empresa = Globales.Texto(login["Empresa"]);
+            SesionActual.Credenciales.SedeId = Globales.EnteroNull(login["SedeId"]);
+            SesionActual.Credenciales.UsuarioId = Globales.EnteroNull(login["UsuarioId"]);
+            SesionActual.Credenciales.Id = Globales.Texto(login["Sesion"]);
+            SesionActual.Credenciales.Master = Globales.Booleano(login["Master"]);
+
+            _nombreEmpresaTextBox.Text = SesionActual.Credenciales.Empresa;
+
+
+            _nombreEmpresaPanel.IsVisible = true;
             _contrasenaPanel.IsVisible = false;
             _sedePanel.IsVisible = true;
             _continueButton.IsVisible = false;
             _recordarCheckBox.IsVisible = false;
             _logoutButton.IsVisible = true;
-            _nombreEmpresaPanel.IsVisible = true;
             _isPostLoginState = true;
+            LoginContinued?.Invoke(this, EventArgs.Empty);
+        }
+        else
+        {
+            MessageWindow.ShowMessage("Usuario o contraseña incorrectos.");
+            return;
         }
 
-        LoginContinued?.Invoke(this, EventArgs.Empty);
+        
     }
 
     private void OnLogoutButtonClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)

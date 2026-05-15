@@ -9,6 +9,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 
 namespace Predator;
@@ -47,7 +48,7 @@ public sealed class DataGridPredator : DataGrid
     protected override Type StyleKeyOverride => typeof(DataGrid);
 
     private IList<object>? _data;
-    private List<(string Header, string PropertyName, bool IsCheckBox)> _columnDefinitions = [];
+    private List<(string Header, string PropertyName, bool IsCheckBox, Type DataType)> _columnDefinitions = [];
     private Dictionary<string, bool> _columnVisibility = [];
     private string? _lastSortProperty;
     private bool _lastSortAscending = true;
@@ -62,6 +63,7 @@ public sealed class DataGridPredator : DataGrid
         CanUserReorderColumns = true;
         CanUserResizeColumns = true;
         IsReadOnly = true;
+        Focusable = false;
         GridLinesVisibility = DataGridGridLinesVisibility.All;
         BorderThickness = new Avalonia.Thickness(1);
         BorderBrush = Avalonia.Media.Brushes.LightGray;
@@ -88,9 +90,21 @@ public sealed class DataGridPredator : DataGrid
         _lastSortProperty = sortProperty;
         _lastSortAscending = ascending;
 
-        var sorted = ascending
-            ? rows.OrderBy(item => GetSortableValue(item, sortProperty)).ToList()
-            : rows.OrderByDescending(item => GetSortableValue(item, sortProperty)).ToList();
+        // Obtener el tipo de dato de la columna
+        var columnDataType = _columnDefinitions
+            .Where(col => col.PropertyName == sortProperty)
+            .Select(col => col.DataType)
+            .FirstOrDefault();
+
+        var sorted = rows.ToList();
+        sorted.Sort((left, right) =>
+        {
+            var result = CompareSortableValues(
+                GetSortableValue(left, sortProperty), 
+                GetSortableValue(right, sortProperty),
+                columnDataType);
+            return ascending ? result : -result;
+        });
 
         rows.Clear();
         foreach (var item in sorted)
@@ -101,11 +115,113 @@ public sealed class DataGridPredator : DataGrid
 
     private static object? GetSortableValue(object item, string propertyName)
     {
+        if (item is IDictionary<string, object?> dictionary &&
+            dictionary.TryGetValue(propertyName, out var value))
+        {
+            return value;
+        }
+
         var property = item.GetType().GetProperty(propertyName);
         return property?.GetValue(item);
     }
 
-    public void LoadData(IList<object> data, List<(string Header, string PropertyName, bool IsCheckBox)> columns)
+    private static int CompareSortableValues(object? left, object? right, Type? columnDataType = null)
+    {
+        if (ReferenceEquals(left, right))
+            return 0;
+
+        if (left is null)
+            return -1;
+
+        if (right is null)
+            return 1;
+
+        // Si conocemos el tipo de la columna, parsear según ese tipo
+        if (columnDataType != null)
+        {
+            if (columnDataType == typeof(DateTime) || columnDataType == typeof(DateTime?))
+            {
+                if (TryToDateTime(left, out var leftDate) && TryToDateTime(right, out var rightDate))
+                    return leftDate.CompareTo(rightDate);
+            }
+            else if (columnDataType == typeof(decimal) || columnDataType == typeof(decimal?))
+            {
+                if (TryToDecimal(left, out var leftDecimal) && TryToDecimal(right, out var rightDecimal))
+                    return leftDecimal.CompareTo(rightDecimal);
+            }
+            else if (columnDataType == typeof(int) || columnDataType == typeof(int?) ||
+                     columnDataType == typeof(double) || columnDataType == typeof(double?) ||
+                     columnDataType == typeof(float) || columnDataType == typeof(float?))
+            {
+                if (TryToDecimal(left, out var leftNum) && TryToDecimal(right, out var rightNum))
+                    return leftNum.CompareTo(rightNum);
+            }
+            else if (columnDataType == typeof(bool) || columnDataType == typeof(bool?))
+            {
+                if (TryToBoolean(left, out var leftBool) && TryToBoolean(right, out var rightBool))
+                    return leftBool.CompareTo(rightBool);
+            }
+        }
+
+        // Fallback: intentar por tipo de dato actual
+        if (left.GetType() == right.GetType() && left is IComparable comparable)
+            return comparable.CompareTo(right);
+
+        if (TryToDecimal(left, out var leftDecimal2) && TryToDecimal(right, out var rightDecimal2))
+            return leftDecimal2.CompareTo(rightDecimal2);
+
+        if (TryToDateTime(left, out var leftDate2) && TryToDateTime(right, out var rightDate2))
+            return leftDate2.CompareTo(rightDate2);
+
+        if (TryToBoolean(left, out var leftBool2) && TryToBoolean(right, out var rightBool2))
+            return leftBool2.CompareTo(rightBool2);
+
+        return string.Compare(left.ToString(), right.ToString(), StringComparison.CurrentCultureIgnoreCase);
+    }
+
+    private static bool TryToDecimal(object value, out decimal result)
+    {
+        if (value is decimal d)
+        {
+            result = d;
+            return true;
+        }
+
+        var text = value.ToString();
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            result = 0m;
+            return false;
+        }
+
+        return decimal.TryParse(text, NumberStyles.Any, CultureInfo.InvariantCulture, out result)
+            || decimal.TryParse(text, NumberStyles.Any, CultureInfo.CurrentCulture, out result);
+    }
+
+    private static bool TryToDateTime(object value, out DateTime result)
+    {
+        if (value is DateTime date)
+        {
+            result = date;
+            return true;
+        }
+
+        return DateTime.TryParse(value.ToString(), CultureInfo.CurrentCulture, DateTimeStyles.None, out result)
+            || DateTime.TryParse(value.ToString(), CultureInfo.InvariantCulture, DateTimeStyles.None, out result);
+    }
+
+    private static bool TryToBoolean(object value, out bool result)
+    {
+        if (value is bool boolean)
+        {
+            result = boolean;
+            return true;
+        }
+
+        return bool.TryParse(value.ToString(), out result);
+    }
+
+    public void LoadData(IList<object> data, List<(string Header, string PropertyName, bool IsCheckBox, Type DataType)> columns)
     {
         _data = data;
         _columnDefinitions = columns;
@@ -113,7 +229,7 @@ public sealed class DataGridPredator : DataGrid
         // Initialize visibility (all visible by default, keep previous state if possible)
         var oldVisibility = new Dictionary<string, bool>(_columnVisibility);
         _columnVisibility.Clear();
-        foreach (var (header, _, _) in _columnDefinitions)
+        foreach (var (header, _, _, _) in _columnDefinitions)
         {
             _columnVisibility[header] = oldVisibility.TryGetValue(header, out var vis) ? vis : true;
         }
@@ -134,12 +250,12 @@ public sealed class DataGridPredator : DataGrid
         {
             LoadData(BuildClientesRows(),
             [
-                ("Selección", "", false),
-                ("ID", "Id", false),
-                ("Nombre", "Nombre", false),
-                ("Email", "Email", false),
-                ("Saldo", "Saldo", false),
-                ("Activo", "Activo", true)
+                ("Selección", "", false, typeof(bool)),
+                ("ID", "Id", false, typeof(int)),
+                ("Nombre", "Nombre", false, typeof(string)),
+                ("Email", "Email", false, typeof(string)),
+                ("Saldo", "Saldo", false, typeof(decimal)),
+                ("Activo", "Activo", true, typeof(bool))
             ]);
             return;
         }
@@ -148,25 +264,25 @@ public sealed class DataGridPredator : DataGrid
         {
             LoadData(BuildArticulosRows(),
             [
-                ("Selección", "", false),
-                ("ID", "Id", false),
-                ("Codigo", "Codigo", false),
-                ("Descripcion", "Descripcion", false),
-                ("Precio", "Precio", false),
-                ("Stock", "Stock", false),
-                ("Activo", "Activo", true)
+                ("Selección", "", false, typeof(bool)),
+                ("ID", "Id", false, typeof(int)),
+                ("Codigo", "Codigo", false, typeof(string)),
+                ("Descripcion", "Descripcion", false, typeof(string)),
+                ("Precio", "Precio", false, typeof(decimal)),
+                ("Stock", "Stock", false, typeof(int)),
+                ("Activo", "Activo", true, typeof(bool))
             ]);
             return;
         }
 
         LoadData(BuildGenericRows(tableTitle),
         [
-            ("Selección", "", false),
-            ("ID", "Id", false),
-            ("Tabla", "Tabla", false),
-            ("Descripcion", "Descripcion", false),
-            ("Valor", "Valor", false),
-            ("Activo", "Activo", true)
+            ("Selección", "", false, typeof(bool)),
+            ("ID", "Id", false, typeof(int)),
+            ("Tabla", "Tabla", false, typeof(string)),
+            ("Descripcion", "Descripcion", false, typeof(string)),
+            ("Valor", "Valor", false, typeof(decimal)),
+            ("Activo", "Activo", true, typeof(bool))
         ]);
     }
 
@@ -174,7 +290,7 @@ public sealed class DataGridPredator : DataGrid
     {
         Columns.Clear();
 
-        foreach (var (header, propertyName, isCheckBox) in _columnDefinitions)
+        foreach (var (header, propertyName, isCheckBox, dataType) in _columnDefinitions)
         {
             if (!_columnVisibility.GetValueOrDefault(header, true))
                 continue;
@@ -185,7 +301,7 @@ public sealed class DataGridPredator : DataGrid
             else if (isCheckBox)
                 col = BuildCheckBoxColumn(header, propertyName);
             else
-                col = BuildTextColumn(header, propertyName);
+                col = BuildTextColumn(header, propertyName, dataType);
 
             Columns.Add(col);
         }
@@ -358,6 +474,25 @@ public sealed class DataGridPredator : DataGrid
     private static bool TryGetBooleanProperty(object row, string propertyName, out bool value)
     {
         value = false;
+
+        if (row is IDictionary<string, object?> dictionary &&
+            dictionary.TryGetValue(propertyName, out var dictValue))
+        {
+            if (dictValue is bool boolValue)
+            {
+                value = boolValue;
+                return true;
+            }
+
+            if (dictValue is not null && bool.TryParse(dictValue.ToString(), out var parsed))
+            {
+                value = parsed;
+                return true;
+            }
+
+            return false;
+        }
+
         var property = row.GetType().GetProperty(propertyName);
         if (property?.PropertyType != typeof(bool))
             return false;
@@ -366,15 +501,66 @@ public sealed class DataGridPredator : DataGrid
         return true;
     }
 
-    private static DataGridTextColumn BuildTextColumn(string header, string propertyName)
+    private static DataGridColumn BuildTextColumn(string header, string propertyName, Type dataType)
     {
+        var bindingPath = $"[{propertyName}]";
+        var nonNullableType = Nullable.GetUnderlyingType(dataType) ?? dataType;
+        var isDecimalType = nonNullableType == typeof(decimal) || nonNullableType == typeof(double) || nonNullableType == typeof(float);
+        var isIntegerType = nonNullableType == typeof(byte) || nonNullableType == typeof(sbyte) ||
+                            nonNullableType == typeof(short) || nonNullableType == typeof(ushort) ||
+                            nonNullableType == typeof(int) || nonNullableType == typeof(uint) ||
+                            nonNullableType == typeof(long) || nonNullableType == typeof(ulong);
+        var isDateType = nonNullableType == typeof(DateTime);
+
+        // Si es una columna numérica, usar DataGridTemplateColumn con alineación a la derecha
+        if (isDecimalType || isIntegerType)
+        {
+            return new DataGridTemplateColumn
+            {
+                Header = header,
+                CanUserSort = true,
+                SortMemberPath = propertyName,
+                CellTemplate = new FuncDataTemplate<object>((_, _) =>
+                {
+                    var textBlock = new TextBlock
+                    {
+                        HorizontalAlignment = isDecimalType ? HorizontalAlignment.Right : HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        Margin = new Avalonia.Thickness(5, 0, 5, 0)
+                    };
+                    var binding = new Avalonia.Data.Binding(bindingPath);
+                    if (isDecimalType)
+                        binding.StringFormat = "{0:N2}";
+
+                    textBlock.Bind(TextBlock.TextProperty, binding);
+                    return textBlock;
+                })
+            };
+        }
+
+        if (isDateType)
+        {
+            return new DataGridTextColumn
+            {
+                Header = header,
+                IsReadOnly = true,
+                CanUserSort = true,
+                SortMemberPath = propertyName,
+                Binding = new Avalonia.Data.Binding(bindingPath)
+                {
+                    StringFormat = "{0:dd/MM/yyyy}"
+                }
+            };
+        }
+
+        // Para columnas de texto, usar DataGridTextColumn estándar
         return new DataGridTextColumn
         {
             Header = header,
             IsReadOnly = true,
             CanUserSort = true,
             SortMemberPath = propertyName,
-            Binding = new Avalonia.Data.Binding(propertyName)
+            Binding = new Avalonia.Data.Binding(bindingPath)
         };
     }
 
@@ -386,7 +572,7 @@ public sealed class DataGridPredator : DataGrid
             IsReadOnly = true,
             CanUserSort = true,
             SortMemberPath = propertyName,
-            Binding = new Avalonia.Data.Binding(propertyName)
+            Binding = new Avalonia.Data.Binding($"[{propertyName}]")
         };
     }
 
@@ -405,10 +591,10 @@ public sealed class DataGridPredator : DataGrid
     {
         return new List<object>
         {
-            new ArticuloRow { Id = 1, Codigo = "ART-001", Descripcion = "Teclado", Precio = 35.90m, Stock = 12, Activo = true },
+            new ArticuloRow { Id = 1, Codigo = "ART-001", Descripcion = "Teclado", Precio = 350.90m, Stock = 12, Activo = true },
             new ArticuloRow { Id = 2, Codigo = "ART-002", Descripcion = "Monitor", Precio = 189.00m, Stock = 7, Activo = true },
-            new ArticuloRow { Id = 3, Codigo = "ART-003", Descripcion = "Raton", Precio = 18.50m, Stock = 25, Activo = true },
-            new ArticuloRow { Id = 4, Codigo = "ART-004", Descripcion = "Impresora", Precio = 129.99m, Stock = 3, Activo = false }
+            new ArticuloRow { Id = 3, Codigo = "ART-003", Descripcion = "Raton", Precio = 189.50m, Stock = 25, Activo = true },
+            new ArticuloRow { Id = 4, Codigo = "ART-004", Descripcion = "Impresora", Precio = 729.99m, Stock = 3, Activo = false }
         };
     }
 
@@ -433,11 +619,22 @@ public sealed class DataGridPredator : DataGrid
         // Always use the original definition order for DisplayOrder
         for (int i = 0; i < _columnDefinitions.Count; i++)
         {
-            var (header, _, _) = _columnDefinitions[i];
+            var (header, _, _, _) = _columnDefinitions[i];
             var isVisible = _columnVisibility.TryGetValue(header, out var visible) ? visible : true;
             configs.Add(new ColumnConfig(header, header, i, isVisible));
         }
         return configs;
+    }
+
+    public Type? GetColumnDataType(string propertyName)
+    {
+        foreach (var definition in _columnDefinitions)
+        {
+            if (string.Equals(definition.PropertyName, propertyName, StringComparison.Ordinal))
+                return definition.DataType;
+        }
+
+        return null;
     }
 
     public void ApplyColumnConfigs(System.Collections.ObjectModel.ObservableCollection<ColumnConfig> configs)
@@ -451,7 +648,7 @@ public sealed class DataGridPredator : DataGrid
 
         // Reorder _columnDefinitions according to DisplayOrder of ALL configs (not just visibles)
         var orderedConfigs = configs.OrderBy(c => c.DisplayOrder).ToList();
-        var reorderedDefinitions = new List<(string Header, string PropertyName, bool IsCheckBox)>();
+        var reorderedDefinitions = new List<(string Header, string PropertyName, bool IsCheckBox, Type DataType)>();
         foreach (var config in orderedConfigs)
         {
             var definition = _columnDefinitions.FirstOrDefault(d => d.Header == config.Header);

@@ -9,7 +9,6 @@
 
     <Window.Resources>
         <Thickness x:Key="TabControlTopPlacementItemMargin">0</Thickness>
-        <SolidColorBrush x:Key="DataGridColumnHeaderHoveredBackgroundBrush" Color="WhiteSmoke" />
     </Window.Resources>
 
     <Window.Styles>
@@ -44,6 +43,7 @@
 
         <Style Selector="TabControl /template/ ContentPresenter#PART_SelectedContentHost">
             <Setter Property="Margin" Value="0" />
+            <Setter Property="Background" Value="Gainsboro" />
         </Style>
 
         <Style Selector="Menu">
@@ -51,75 +51,57 @@
             <Setter Property="Foreground" Value="White" />
         </Style>
 
-        <Style Selector="MenuItem">
+        <Style Selector="Menu > MenuItem">
             <Setter Property="Foreground" Value="White" />
-            <Setter Property="Template">
-                <ControlTemplate>
-                    <Border Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            Padding="{TemplateBinding Padding}">
-                        <ContentPresenter Content="{TemplateBinding Header}"
-                                          Foreground="White"
-                                          ContentTemplate="{TemplateBinding HeaderTemplate}"
-                                          VerticalAlignment="Center" />
-                    </Border>
-                </ControlTemplate>
-            </Setter>
         </Style>
 
-        <Style Selector="MenuItem:pointerover">
+        <Style Selector="Menu > MenuItem /template/ ContentPresenter">
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <Style Selector="Menu > MenuItem:pointerover">
+            <Setter Property="Background" Value="#1E6FB3" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <Style Selector="Menu > MenuItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <Style Selector="Menu > MenuItem:pointerover /template/ Border">
+            <Setter Property="Background" Value="#1E6FB3" />
+        </Style>
+
+        <Style Selector="Menu > MenuItem:open">
             <Setter Property="Background" Value="#004d80" />
             <Setter Property="Foreground" Value="White" />
         </Style>
 
-        <Style Selector="MenuItem:open">
-            <Setter Property="Background" Value="#004d80" />
+        <Style Selector="Menu > MenuItem:selected">
             <Setter Property="Foreground" Value="White" />
         </Style>
 
-        <Style Selector="MenuItem:selected">
-            <Setter Property="Foreground" Value="White" />
+        <Style Selector="MenuItem MenuItem">
+            <Setter Property="Foreground" Value="Black" />
+            <Setter Property="Background" Value="White" />
+        </Style>
+
+        <Style Selector="MenuItem MenuItem:pointerover">
+            <Setter Property="Foreground" Value="Black" />
+            <Setter Property="Background" Value="#E6F0FA" />
+        </Style>
+
+        <Style Selector="MenuItem MenuItem:open">
+            <Setter Property="Foreground" Value="Black" />
+            <Setter Property="Background" Value="#E6F0FA" />
+        </Style>
+
+        <Style Selector="MenuItem MenuItem:selected">
+            <Setter Property="Foreground" Value="Black" />
         </Style>
 
         <Style Selector="MenuItem:disabled">
             <Setter Property="Opacity" Value="0.5" />
-        </Style>
-
-        <Style Selector="DataGridColumnHeader">
-            <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="FontSize" Value="{Binding $parent[DataGrid].FontSize}" />
-            <Setter Property="Background" Value="WhiteSmoke" />
-        </Style>
-
-        <Style Selector="DataGridColumnHeader:pointerover">
-            <Setter Property="Background" Value="WhiteSmoke" />
-        </Style>
-
-        <Style Selector="DataGridColumnHeader:pointerover /template/ Grid#PART_ColumnHeaderRoot">
-            <Setter Property="Background" Value="WhiteSmoke" />
-        </Style>
-
-        <Style Selector="DataGridColumnHeader /template/ Border">
-            <Setter Property="Background" Value="WhiteSmoke" />
-        </Style>
-
-        <Style Selector="DataGridColumnHeader:pointerover /template/ Border">
-            <Setter Property="Background" Value="WhiteSmoke" />
-        </Style>
-
-        <Style Selector="DataGridCell:focus">
-            <Setter Property="BorderBrush" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-        </Style>
-
-        <Style Selector="DataGridCell">
-            <Setter Property="Foreground" Value="#4A4A4A" />
-        </Style>
-
-        <Style Selector="DataGridCell:current">
-            <Setter Property="BorderBrush" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
         </Style>
 
         <Style Selector="Button.tab-close-button">
