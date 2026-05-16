@@ -38,6 +38,7 @@
         <Style Selector="DataGridCell">
             <Setter Property="Foreground" Value="#4A4A4A" />
             <Setter Property="Focusable" Value="False" />
+            <Setter Property="Padding" Value="3,0,5,0" />
         </Style>
 
         <Style Selector="DataGridCell:current">

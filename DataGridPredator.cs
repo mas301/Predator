@@ -526,7 +526,7 @@ public sealed class DataGridPredator : DataGrid
                     {
                         HorizontalAlignment = isDecimalType ? HorizontalAlignment.Right : HorizontalAlignment.Center,
                         VerticalAlignment = VerticalAlignment.Center,
-                        Margin = new Avalonia.Thickness(5, 0, 5, 0)
+                        Margin = new Avalonia.Thickness(3, 0, 5, 0)
                     };
                     var binding = new Avalonia.Data.Binding(bindingPath);
                     if (isDecimalType)
@@ -540,27 +540,48 @@ public sealed class DataGridPredator : DataGrid
 
         if (isDateType)
         {
-            return new DataGridTextColumn
+            return new DataGridTemplateColumn
             {
                 Header = header,
-                IsReadOnly = true,
                 CanUserSort = true,
                 SortMemberPath = propertyName,
-                Binding = new Avalonia.Data.Binding(bindingPath)
+                CellTemplate = new FuncDataTemplate<object>((_, _) =>
                 {
-                    StringFormat = "{0:dd/MM/yyyy}"
-                }
+                    var textBlock = new TextBlock
+                    {
+                        HorizontalAlignment = HorizontalAlignment.Left,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        Margin = new Avalonia.Thickness(3, 0, 5, 0)
+                    };
+
+                    textBlock.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding(bindingPath)
+                    {
+                        StringFormat = "{0:dd/MM/yyyy}"
+                    });
+
+                    return textBlock;
+                })
             };
         }
 
-        // Para columnas de texto, usar DataGridTextColumn estándar
-        return new DataGridTextColumn
+        // Para columnas de texto, usar template explícito para controlar el margen visual.
+        return new DataGridTemplateColumn
         {
             Header = header,
-            IsReadOnly = true,
             CanUserSort = true,
             SortMemberPath = propertyName,
-            Binding = new Avalonia.Data.Binding(bindingPath)
+            CellTemplate = new FuncDataTemplate<object>((_, _) =>
+            {
+                var textBlock = new TextBlock
+                {
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Avalonia.Thickness(3, 0, 5, 0)
+                };
+
+                textBlock.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding(bindingPath));
+                return textBlock;
+            })
         };
     }
 
