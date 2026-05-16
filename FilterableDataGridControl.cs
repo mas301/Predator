@@ -19,9 +19,17 @@ public sealed class FilterableDataGridControl : Border
         public string ContainsValue { get; set; } = string.Empty;
     }
 
+    private sealed class DateFilterRule
+    {
+        public DateTime? StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+    }
+
     private readonly Sesion _sesion;
     private readonly Dictionary<string, StringFilterRule> _activeStringFilters = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, DateFilterRule> _activeDateFilters = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, TextFilterComboBox> _headerFilterCombos = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, DateRangeFilterControl> _headerDateFilterControls = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, List<string>> _unfilteredTextCatalog = new(StringComparer.OrdinalIgnoreCase);
     private Task? _catalogLoadTask;
     private CancellationTokenSource? _filterReloadCts;
@@ -150,8 +158,11 @@ public sealed class FilterableDataGridControl : Border
                         ? null
                         : Nullable.GetUnderlyingType(columnDataType) ?? columnDataType;
 
-                    Control headerCell = nonNullableType == typeof(string)
-                        ? new TextFilterComboBox
+                    Control headerCell;
+                    
+                    if (nonNullableType == typeof(string))
+                    {
+                        headerCell = new TextFilterComboBox
                         {
                             Background = Brushes.White,
                             BorderThickness = new Avalonia.Thickness(0.5),
@@ -161,8 +172,15 @@ public sealed class FilterableDataGridControl : Border
                             VerticalAlignment = VerticalAlignment.Stretch,
                             HorizontalContentAlignment = HorizontalAlignment.Left,
                             VerticalContentAlignment = VerticalAlignment.Center
-                        }
-                        : new Label
+                        };
+                    }
+                    else if (nonNullableType == typeof(DateTime))
+                    {
+                        headerCell = new DateRangeFilterControl();
+                    }
+                    else
+                    {
+                        headerCell = new Label
                         {
                             Content = string.Empty,
                             Background = Brushes.White,
@@ -172,6 +190,7 @@ public sealed class FilterableDataGridControl : Border
                             HorizontalContentAlignment = HorizontalAlignment.Left,
                             VerticalContentAlignment = VerticalAlignment.Center
                         };
+                    }
 
                     if (headerCell is TextFilterComboBox comboBox && !string.IsNullOrWhiteSpace(sortMemberPath))
                     {
@@ -181,6 +200,12 @@ public sealed class FilterableDataGridControl : Border
                         _headerFilterCombos[propertyName] = comboBox;
                         comboBox.ItemSelected += (_, args) => UpdateStringFilterSelections(propertyName, args.SelectedValues);
                         comboBox.TypedTextChanged += (_, args) => UpdateStringContainsFilter(propertyName, args.Text);
+                    }
+                    else if (headerCell is DateRangeFilterControl dateRangeControl && !string.IsNullOrWhiteSpace(sortMemberPath))
+                    {
+                        var propertyName = sortMemberPath;
+                        _headerDateFilterControls[propertyName] = dateRangeControl;
+                        dateRangeControl.DateRangeChanged += (_, args) => UpdateDateRangeFilter(propertyName, args.StartDate, args.EndDate);
                     }
 
                     Avalonia.Controls.Grid.SetColumn(headerCell, i);
@@ -585,6 +610,28 @@ public sealed class FilterableDataGridControl : Border
         QueueFilteredSqlReload();
     }
 
+    private void UpdateDateRangeFilter(string propertyName, DateTime? startDate, DateTime? endDate)
+    {
+        if (!startDate.HasValue && !endDate.HasValue)
+        {
+            _activeDateFilters.Remove(propertyName);
+        }
+        else
+        {
+            if (!_activeDateFilters.TryGetValue(propertyName, out var rule))
+            {
+                rule = new DateFilterRule();
+                _activeDateFilters[propertyName] = rule;
+            }
+
+            rule.StartDate = startDate;
+            rule.EndDate = endDate;
+        }
+
+        QueueFilterSummaryUpdate();
+        QueueFilteredSqlReload();
+    }
+
     private void QueueFilteredSqlReload()
     {
         _filterReloadCts?.Cancel();
@@ -621,6 +668,8 @@ public sealed class FilterableDataGridControl : Border
             return;
 
         var summaryText = "Filtro: (sin filtros)";
+        var allRules = new List<string>();
+
         if (_activeStringFilters.Count > 0)
         {
             var rules = _activeStringFilters
@@ -639,8 +688,36 @@ public sealed class FilterableDataGridControl : Border
                 })
                 .ToList();
 
-            summaryText = $"Filtro: {string.Join(" y ", rules)}";
+            allRules.AddRange(rules);
         }
+
+        if (_activeDateFilters.Count > 0)
+        {
+            var dateRules = _activeDateFilters
+                .Select(pair =>
+                {
+                    var field = pair.Key;
+                    var rule = pair.Value;
+
+                    if (rule.StartDate.HasValue && rule.EndDate.HasValue)
+                        return $"{field} entre {rule.StartDate.Value:dd/MM/yyyy} y {rule.EndDate.Value:dd/MM/yyyy}";
+
+                    if (rule.StartDate.HasValue)
+                        return $"{field} desde {rule.StartDate.Value:dd/MM/yyyy}";
+
+                    if (rule.EndDate.HasValue)
+                        return $"{field} hasta {rule.EndDate.Value:dd/MM/yyyy}";
+
+                    return string.Empty;
+                })
+                .Where(text => !string.IsNullOrWhiteSpace(text))
+                .ToList();
+
+            allRules.AddRange(dateRules);
+        }
+
+        if (allRules.Count > 0)
+            summaryText = $"Filtro: {string.Join(" y ", allRules)}";
 
         if (string.Equals(_lastFilterSummaryText, summaryText, StringComparison.Ordinal))
             return;
@@ -656,10 +733,11 @@ public sealed class FilterableDataGridControl : Border
 
     private string BuildSqlFilterFromActiveFilters()
     {
-        if (_activeStringFilters.Count == 0)
+        if (_activeStringFilters.Count == 0 && _activeDateFilters.Count == 0)
             return string.Empty;
 
-        var clauses = new List<string>(_activeStringFilters.Count);
+        var clauses = new List<string>();
+        
         foreach (var (propertyName, rule) in _activeStringFilters)
         {
             if (rule.EqualsValues.Count > 0)
@@ -681,6 +759,21 @@ public sealed class FilterableDataGridControl : Border
             {
                 var escaped = EscapeSqlLiteral(rule.ContainsValue);
                 clauses.Add($"{propertyName} LIKE '%{escaped}%'");
+            }
+        }
+
+        foreach (var (propertyName, rule) in _activeDateFilters)
+        {
+            if (rule.StartDate.HasValue)
+            {
+                var startDateStr = rule.StartDate.Value.ToString("yyyy-MM-dd HH:mm:ss");
+                clauses.Add($"{propertyName} >= '{startDateStr}'");
+            }
+
+            if (rule.EndDate.HasValue)
+            {
+                var endDateStr = rule.EndDate.Value.ToString("yyyy-MM-dd HH:mm:ss");
+                clauses.Add($"{propertyName} <= '{endDateStr}'");
             }
         }
 

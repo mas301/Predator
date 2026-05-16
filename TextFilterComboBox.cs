@@ -232,7 +232,7 @@ public sealed class TextFilterComboBox : ComboBox
         {
             0 => string.Empty,
             1 => _selectedValues[0],
-            _ => $"{_selectedValues.Count} seleccionados"
+            _ => $"{_selectedValues.Count} valores"
         };
 
         _suppressTypedTextEvent = true;

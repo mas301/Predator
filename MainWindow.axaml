@@ -5,7 +5,8 @@
     xmlns:local="using:Predator"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="Predator.MainWindow"
-        Title="Predator">
+        Title="Predator"
+        Background="White">
 
     <Window.Resources>
         <Thickness x:Key="TabControlTopPlacementItemMargin">0</Thickness>

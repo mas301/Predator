@@ -1,13 +1,83 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Predator.App"
-             RequestedThemeVariant="Default">
-             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+             RequestedThemeVariant="Light">
+             <!-- "Light" fuerza el tema claro independientemente de la configuración del sistema -->
 
     <Application.Styles>
         <FluentTheme />
         <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
 
+        <!-- Estilos globales para controles comunes -->
+        <Style Selector="Window">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="#4A4A4A" />
+        </Style>
+
+        <Style Selector="Button">
+            <Setter Property="Background" Value="#E0E0E0" />
+            <Setter Property="Foreground" Value="#4A4A4A" />
+            <Setter Property="BorderBrush" Value="#ADADAD" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="8,4" />
+        </Style>
+
+        <Style Selector="Button:pointerover">
+            <Setter Property="Background" Value="#D0D0D0" />
+        </Style>
+
+        <Style Selector="Button:pressed">
+            <Setter Property="Background" Value="#C0C0C0" />
+        </Style>
+
+        <Style Selector="TextBlock">
+            <Setter Property="Foreground" Value="#4A4A4A" />
+        </Style>
+
+        <Style Selector="TextBox">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="#4A4A4A" />
+            <Setter Property="BorderBrush" Value="#ADADAD" />
+        </Style>
+
+        <Style Selector="CheckBox">
+            <Setter Property="Foreground" Value="#4A4A4A" />
+        </Style>
+
+        <Style Selector="ListBox">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="#4A4A4A" />
+        </Style>
+
+        <Style Selector="ListBoxItem">
+            <Setter Property="Foreground" Value="#4A4A4A" />
+        </Style>
+
+        <Style Selector="ListBoxItem:selected">
+            <Setter Property="Background" Value="#E6F0FA" />
+            <Setter Property="Foreground" Value="#4A4A4A" />
+        </Style>
+
+        <Style Selector="ComboBox">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="#4A4A4A" />
+            <Setter Property="BorderBrush" Value="#ADADAD" />
+        </Style>
+
+        <Style Selector="ComboBoxItem">
+            <Setter Property="Foreground" Value="#4A4A4A" />
+        </Style>
+
+        <Style Selector="ComboBoxItem:selected">
+            <Setter Property="Background" Value="#E6F0FA" />
+            <Setter Property="Foreground" Value="#4A4A4A" />
+        </Style>
+
+        <Style Selector="Label">
+            <Setter Property="Foreground" Value="#4A4A4A" />
+        </Style>
+
+        <!-- DataGrid estilos -->
         <Style Selector="DataGridColumnHeader">
             <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="FontSize" Value="{Binding $parent[DataGrid].FontSize}" />
